@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini App Quản Lý Cá Nhân</title>
+    <!-- Nhúng SDK của Telegram để lấy thông tin user -->
+    <script src="https://telegram.org"></script>
+    <!-- Nhúng Tailwind CSS để làm giao diện nhanh -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        body { background-color: #0d0d0d; color: #ffffff; font-family: sans-serif; }
+        .gradient-card {
+            background: linear-gradient(135deg, #1a0505 0%, #0d0d0d 100%);
+            border: 1px solid #ff1a1a;
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col justify-center items-center min-h-screen">
+
+    <!-- MÀN HÌNH 1: CẢNH BÁO NẾU KHÔNG MỞ TỪ TELEGRAM -->
+    <div id="warning-screen" class="hidden text-center max-w-sm p-6 bg-[#141414] rounded-2xl border border-gray-800 shadow-lg">
+        <div class="text-yellow-500 text-4xl mb-3">🔒</div>
+        <h2 class="text-xl font-bold mb-2">Trung tâm khách hàng</h2>
+        <p class="text-gray-400 text-sm mb-4">Ứng dụng này chỉ hoạt động khi mở từ Telegram.</p>
+        <p class="text-gray-400 text-sm">Vui lòng sử dụng nút <span class="text-yellow-500 font-bold">"MINI APP"</span> trong bot để truy cập.</p>
+    </div>
+
+    <!-- MÀN HÌNH 2: GIAO DIỆN CHÍNH (DASHBOARD) -->
+    <div id="main-app" class="w-full max-w-md hidden">
+        <!-- Khu vực thông tin cá nhân (Profile Card) -->
+        <div class="gradient-card p-4 rounded-2xl mb-4 relative overflow-hidden shadow-2xl">
+            <div class="flex items-center gap-3">
+                <!-- Ảnh đại diện giả lập -->
+                <div class="w-14 h-14 bg-gray-700 rounded-full border-2 border-white flex items-center justify-center text-xl">👤</div>
+                <div>
+                    <h3 id="user-name" class="font-bold text-lg">@loading...</h3>
+                    <span id="user-id" class="text-xs bg-[#122e1f] text-[#39d353] px-2 py-0.5 rounded-full border border-[#2ea44f]">ID: 00000000</span>
+                </div>
+            </div>
+            
+            <!-- Thanh cấp độ VIP -->
+            <div class="mt-4">
+                <span class="text-xs bg-amber-600 text-white px-2 py-0.5 rounded font-bold">💎 VIP 0</span>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full mt-1.5">
+                    <div class="bg-red-600 h-1.5 rounded-full" style="width: 5%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                    <span>Tiến trình</span>
+                    <span>0 / 1,000,000</span>
+                </div>
+            </div>
+
+            <!-- Hàng hiển thị số dư ví -->
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center border-t border-gray-800 pt-3">
+                <div>
+                    <p class="text-[10px] text-gray-400">💼 VÍ CHÍNH</p>
+                    <p class="text-green-400 font-bold text-sm">0đ</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-400">🎟️ VÍ VOUCHER</p>
+                    <p class="text-gray-200 font-bold text-sm">0đ</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-400">⏳ VÍ HOLD</p>
+                    <p class="text-gray-200 font-bold text-sm">0đ</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lưới các danh mục chức năng (Grid Menu) -->
+        <div class="grid grid-cols-2 gap-3">
+            <div onclick="alert('Tính năng Thống kê')" class="bg-[#141414] p-4 rounded-xl border border-gray-800 hover:border-red-500 transition cursor-pointer">
+                <div class="text-xl mb-1">📈</div>
+                <h4 class="font-bold text-sm">THỐNG KÊ</h4>
+                <p class="text-[10px] text-gray-400 mt-1">Xem tổng quan tài khoản, lịch sử điểm thưởng.</p>
+            </div>
+            <div onclick="alert('Tính năng Quản lý')" class="bg-[#141414] p-4 rounded-xl border border-gray-800 hover:border-red-500 transition cursor-pointer">
+                <div class="text-xl mb-1">📦</div>
+                <h4 class="font-bold text-sm">QUẢN LÝ DỰ ÁN</h4>
+                <p class="text-[10px] text-gray-400 mt-1">Theo dõi tiến độ công việc, tác vụ hoàn thành.</p>
+            </div>
+            <div onclick="alert('Tính năng Lịch sử')" class="bg-[#141414] p-4 rounded-xl border border-gray-800 hover:border-red-500 transition cursor-pointer">
+                <div class="text-xl mb-1">🕒</div>
+                <h4 class="font-bold text-sm">LỊCH SỬ HOẠT ĐỘNG</h4>
+                <p class="text-[10px] text-gray-400 mt-1">Chi tiết các hành động, mốc thời gian hệ thống.</p>
+            </div>
+            <div onclick="alert('Tính năng Kho tài khoản')" class="bg-[#141414] p-4 rounded-xl border border-gray-800 hover:border-red-500 transition cursor-pointer">
+                <div class="text-xl mb-1">🔑</div>
+                <h4 class="font-bold text-sm">KHO ACC ĐÃ LIÊN KẾT</h4>
+                <p class="text-[10px] text-gray-400 mt-1">Danh sách tài khoản cá nhân đã kết nối an toàn.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Khởi tạo Telegram Web App SDK
+        const tg = window.Telegram.WebApp;
+
+        // Báo cho Telegram biết ứng dụng đã sẵn sàng hiển thị
+        tg.ready();
+        tg.expand(); // Mở rộng ứng dụng toàn màn hình Telegram
+
+        // BƯỚC KIỂM TRA: Đảm bảo người dùng mở từ ứng dụng Telegram thật
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            // Nếu đúng là Telegram, hiện màn hình chính và ẩn màn hình cảnh báo
+            document.getElementById('main-app').classList.remove('hidden');
+            
+            // Lấy thông tin thật của tài khoản Telegram tự động đổ vào giao diện
+            const user = tg.initDataUnsafe.user;
+            document.getElementById('user-name').innerText = user.username ? `@${user.username}` : `${user.first_name}`;
+            document.getElementById('user-id').innerText = `ID: ${user.id}`;
+        } else {
+            // Nếu mở bằng trình duyệt ngoài (Chrome, Safari...), hiện màn hình khóa giống Ảnh 1
+            document.getElementById('warning-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
