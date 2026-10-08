@@ -15,10 +15,10 @@ const CLOUDFLARE_WEBHOOK_SECRET = process.env.CF_SECRET || 'viet_sub_edge_secret
 const DATA_FILE = path.join(__dirname, 'viet_sub_storage.json');
 
 let BANNER_CONFIG = {
-    customText: "HENDY",          // Text hiển thị mặc định (HENDY, VIETSUB, STUDIO)
-    colorTheme: "CYBERPUNK",      // CYBERPUNK, MATRIX, FIRE, RAINBOW, GOLD
-    animationSpeedMs: 80,         // Tốc độ frame (ms)
-    totalFrames: 35               // Số lượng frame hiệu ứng khởi động
+    customText: "HENDY",          
+    colorTheme: "CYBERPUNK",      
+    animationSpeedMs: 80,         
+    totalFrames: 35               
 };
 
 const asciiFonts = {
@@ -41,10 +41,10 @@ const asciiFonts = {
     STUDIO: [
         "███████╗████████╗██╔══██╗██╗   ██╗██╗ _____ ",
         "██╔════╝╚══██╔══╝██╔══██║██║   ██║██║|___  |",
-        "███████╗   ██║   ██║  ██║██║   ██║██║    / / ",
-        "╚════██║   ██║   ██║  ██║██║   ██║██║   / /  ",
-        "███████║   ██║   ██████╔╝╚██████╔╝██║  /_/   ",
-        "╚══════╝   ╚═╝   ╚═════╝  ╚═════╝ ╚═╝        "
+        "███████╗   ██║   ██║  ██║██║   ██║██║   / / ",
+        "╚════██║   ██║   ██║  ██║██║   ██║██║  / /  ",
+        "███████║   ██║   ██████╔╝╚██████╔╝██║ /_/   ",
+        "╚══════╝   ╚═╝   ╚═════╝  ╚═════╝ ╚═╝       "
     ]
 };
 
@@ -54,8 +54,8 @@ let systemConfig = {
     startTime: Date.now()
 };
 
-let connectedTabs = {};          // WebSocket Slaves / Workers đăng ký
-let activeVideoJobs = new Map(); // BullMQ / Media Pipeline Jobs
+let connectedTabs = {};          
+let activeVideoJobs = new Map(); 
 let systemLogs = [];
 
 function loadPersistedData() {
@@ -93,20 +93,16 @@ function getActiveAsciiLines() {
 }
 
 function getThemeColor(step, x, y, theme) {
-    if (theme === 'MATRIX') {
-        return { r: 0, g: Math.floor(Math.sin((step + x) * 0.2) * 100 + 155), b: 50 };
-    } else if (theme === 'FIRE') {
-        return { r: 255, g: Math.floor(Math.abs(Math.sin((step + x) * 0.1)) * 150), b: 0 };
-    } else if (theme === 'RAINBOW') {
+    if (theme === 'MATRIX') return { r: 0, g: Math.floor(Math.sin((step + x) * 0.2) * 100 + 155), b: 50 };
+    if (theme === 'FIRE') return { r: 255, g: Math.floor(Math.abs(Math.sin((step + x) * 0.1)) * 150), b: 0 };
+    if (theme === 'RAINBOW') {
         const freq = 0.3;
         const r = Math.floor(Math.sin(freq * step + x * 0.1 + 0) * 127 + 128);
         const g = Math.floor(Math.sin(freq * step + x * 0.1 + 2) * 127 + 128);
         const b = Math.floor(Math.sin(freq * step + x * 0.1 + 4) * 127 + 128);
         return { r, g, b };
-    } else if (theme === 'GOLD') {
-        return { r: 255, g: Math.floor(Math.abs(Math.cos((step + x) * 0.1)) * 100 + 155), b: 0 };
     }
-    // Mặc định CYBERPUNK
+    if (theme === 'GOLD') return { r: 255, g: Math.floor(Math.abs(Math.cos((step + x) * 0.1)) * 100 + 155), b: 0 };
     const r = Math.floor(Math.sin((step + x + y * 4) * 0.1) * 127 + 128);
     const g = Math.floor(Math.cos((step + x * 2) * 0.1) * 127 + 128);
     const b = 255;
@@ -152,15 +148,12 @@ app.post('/api/banner/update', (req, res) => {
     if (customText) BANNER_CONFIG.customText = customText.toUpperCase();
     if (colorTheme) BANNER_CONFIG.colorTheme = colorTheme;
     if (animationSpeedMs) BANNER_CONFIG.animationSpeedMs = parseInt(animationSpeedMs, 10) || 80;
-
     savePersistedData();
     logSystemEvent(`Đã cập nhật Banner cấu hình mới: [${BANNER_CONFIG.customText} - Theme: ${BANNER_CONFIG.colorTheme}]`, 'SUCCESS');
-    
     const payload = JSON.stringify({ action: 'BANNER_UPDATED', bannerConfig: BANNER_CONFIG });
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) client.send(payload);
     });
-
     res.json({ success: true, bannerConfig: BANNER_CONFIG });
 });
 
@@ -172,40 +165,27 @@ app.get('/api/jobs', (req, res) => {
 app.post('/api/jobs/create', (req, res) => {
     const jobId = 'job_' + Math.random().toString(36).substring(2, 8);
     const title = req.body.title || 'Video_Pipeline_' + jobId;
-    
     const newJob = {
-        id: jobId,
-        title: title,
-        stage: 'EXTRACTING',
-        progress: 15,
-        status: 'PROCESSING',
+        id: jobId, title: title, stage: 'EXTRACTING', progress: 15, status: 'PROCESSING',
         timestamp: new Date().toLocaleTimeString('vi-VN')
     };
-
     activeVideoJobs.set(jobId, newJob);
     savePersistedData();
     logSystemEvent(`Đã khởi tạo Job ${jobId} (${title}) qua Async BullMQ Queue`, 'SUCCESS');
-
     setTimeout(() => {
         if (activeVideoJobs.has(jobId)) {
             let j = activeVideoJobs.get(jobId);
-            j.stage = 'GEMINI_AI_TRANSLATE';
-            j.progress = 60;
-            savePersistedData();
+            j.stage = 'GEMINI_AI_TRANSLATE'; j.progress = 60; savePersistedData();
         }
     }, 4000);
-
     setTimeout(() => {
         if (activeVideoJobs.has(jobId)) {
             let j = activeVideoJobs.get(jobId);
-            j.stage = 'RENDER_R2_SYNC';
-            j.progress = 100;
-            j.status = 'COMPLETED';
+            j.stage = 'RENDER_R2_SYNC'; j.progress = 100; j.status = 'COMPLETED';
             savePersistedData();
             logSystemEvent(`Job ${jobId} đã xử lý xong và đồng bộ Cloudflare R2!`, 'SUCCESS');
         }
     }, 8000);
-
     res.json({ success: true, jobId });
 });
 
@@ -222,11 +202,7 @@ app.post('/api/ai/manage', async (req, res) => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: `Bạn là AI Quản Lý Hệ Thống VietSub Studio V3.5 Pro. Người dùng hỏi: "${prompt}". Trả về JSON chuẩn: {"action": "START_ALL_BOTS" | "ADD_JOB" | "SYSTEM_STATUS" | "UNKNOWN", "reply": "tiếng Việt"}`
-                            }]
-                        }]
+                        contents: [{ parts: [{ text: `Bạn là AI Quản Lý Hệ Thống VietSub Studio V3.5 Pro. Người dùng hỏi: "${prompt}". Trả về JSON chuẩn: {"action": "START_ALL_BOTS" | "ADD_JOB" | "SYSTEM_STATUS" | "UNKNOWN", "reply": "tiếng Việt"}` }] }]
                     })
                 });
                 const aiData = await aiRes.json();
@@ -236,28 +212,20 @@ app.post('/api/ai/manage', async (req, res) => {
                     resultAction = parsed.action || 'AI_ACTION';
                     replyMessage = parsed.reply || replyMessage;
                 }
-            } catch (err) {
-                console.error("[GEMINI ERROR]:", err.message);
-            }
+            } catch (err) { console.error("[GEMINI ERROR]:", err.message); }
         }
 
         if (resultAction === 'UNKNOWN') {
             if (prompt.includes('chạy') || prompt.includes('start')) {
-                resultAction = 'START_ALL_BOTS';
-                replyMessage = '🚀 AI Manager đã kích hoạt toàn bộ Media Pipelines!';
+                resultAction = 'START_ALL_BOTS'; replyMessage = '🚀 AI Manager đã kích hoạt toàn bộ Media Pipelines!';
             } else if (prompt.includes('thêm') || prompt.includes('add')) {
-                resultAction = 'ADD_JOB';
-                replyMessage = '➕ AI Manager đã khởi tạo thêm 1 Media Pipeline Job mới!';
+                resultAction = 'ADD_JOB'; replyMessage = '➕ AI Manager đã khởi tạo thêm 1 Media Pipeline Job mới!';
             } else if (prompt.includes('trạng thái') || prompt.includes('status')) {
-                resultAction = 'SYSTEM_STATUS';
-                replyMessage = `📊 Sức khỏe hệ thống: ONLINE 🟢 (Slaves: ${Object.keys(connectedTabs).length} | Jobs: ${activeVideoJobs.size})`;
+                resultAction = 'SYSTEM_STATUS'; replyMessage = `📊 Sức khỏe hệ thống: ONLINE 🟢 (Slaves: ${Object.keys(connectedTabs).length} | Jobs: ${activeVideoJobs.size})`;
             }
         }
-
         res.json({ success: true, data: { action: resultAction, reply: replyMessage } });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
 function broadcastTabList(channel) {
@@ -271,18 +239,13 @@ function broadcastTabList(channel) {
 }
 
 wss.on('connection', (ws) => {
-    ws.isAlive = true;
-    ws.channel = 'VIETSUB-KENH-1';
-    ws.isMaster = false;
-
+    ws.isAlive = true; ws.channel = 'VIETSUB-KENH-1'; ws.isMaster = false;
     ws.on('pong', () => { ws.isAlive = true; });
-
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
             const channel = data.channel || ws.channel || 'VIETSUB-KENH-1';
             ws.channel = channel;
-
             if (data.action === 'SYNC_REGISTER_TAB') {
                 if (data.value && data.value.id) {
                     ws.slaveId = data.value.id;
@@ -294,16 +257,12 @@ wss.on('connection', (ws) => {
                 const tabsInChannel = Object.values(connectedTabs).filter(t => t.channel === channel);
                 ws.send(JSON.stringify({ action: 'SYNC_TAB_LIST', value: tabsInChannel, channel: channel }));
             }
-        } catch (err) {
-            console.error('[WS PARSE ERROR]:', err);
-        }
+        } catch (err) { console.error('[WS PARSE ERROR]:', err); }
     });
-
     ws.on('close', () => {
         if (ws.slaveId && connectedTabs[ws.slaveId]) {
             const ch = connectedTabs[ws.slaveId].channel;
-            delete connectedTabs[ws.slaveId];
-            broadcastTabList(ch);
+            delete connectedTabs[ws.slaveId]; broadcastTabList(ch);
         }
     });
 });
@@ -313,16 +272,13 @@ const heartbeatInterval = setInterval(() => {
         if (ws.isAlive === false) {
             if (ws.slaveId && connectedTabs[ws.slaveId]) {
                 const ch = connectedTabs[ws.slaveId].channel;
-                delete connectedTabs[ws.slaveId];
-                broadcastTabList(ch);
+                delete connectedTabs[ws.slaveId]; broadcastTabList(ch);
             }
             return ws.terminate();
         }
-        ws.isAlive = false;
-        ws.ping();
+        ws.isAlive = false; ws.ping();
     });
 }, 15000);
-
 wss.on('close', () => clearInterval(heartbeatInterval));
 
 app.get('/', (req, res) => {
@@ -338,45 +294,46 @@ app.get('/', (req, res) => {
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
             <style>
-                body { font-family: 'Inter', sans-serif; }
+                body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
                 .cyber-font { font-family: 'Chakra Petch', sans-serif; }
                 ::-webkit-scrollbar { width: 6px; height: 6px; }
                 ::-webkit-scrollbar-track { background: #030008; }
                 ::-webkit-scrollbar-thumb { background: #3b82f655; border-radius: 3px; }
                 
-                /* Hiệu ứng cuộn chữ */
-                @keyframes scroll-left {
-                    0% { transform: translateX(100%); }
-                    100% { transform: translateX(-100%); }
-                }
-                .text-scroller {
-                    display: inline-block;
-                    white-space: nowrap;
-                    animation: scroll-left 10s linear infinite; 
-                }
-                .scroll-container {
-                    overflow: hidden;
-                    width: 100%;
-                    max-width: 400px;
+                /* Class cho chữ HENDY nổi tự do */
+                #floating-hendy {
+                    position: fixed;
+                    top: 0; left: 0;
+                    pointer-events: none; /* Xuyên qua chuột, không làm cản trở thao tác */
+                    z-index: 9999;
+                    font-size: 3rem; /* Kích thước to rõ */
+                    font-weight: 900;
+                    text-transform: uppercase;
+                    background: linear-gradient(to right, #00f2fe, #4facfe, #a18cd1, #fbc2eb);
+                    -webkit-background-clip: text;
+                    color: transparent;
+                    filter: drop-shadow(0 0 12px rgba(79, 172, 254, 0.7));
+                    transition: filter 0.5s ease;
                 }
             </style>
         </head>
         <body class="bg-[#030008] text-gray-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+            
+            <!-- Phần tử HENDY bay lơ lửng -->
+            <div id="floating-hendy" class="cyber-font">HENDY</div>
+
             <header class="bg-[#070514]/90 border-b border-blue-900/40 px-6 py-4 sticky top-0 z-50 backdrop-blur-md shadow-2xl">
                 <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div class="flex items-center space-x-3">
                         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
                             <i class="fa-solid fa-cube text-white text-lg"></i>
                         </div>
-                        
-                        <!-- ÁP DỤNG CHỮ CHẠY VÀO ĐÂY -->
-                        <div class="scroll-container">
-                            <h1 class="text-scroller cyber-font text-xl font-bold tracking-wider bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                HENDY - VIETSUB STUDIO V3.5 PRO ENTERPRISE
+                        <div>
+                            <h1 class="cyber-font text-xl font-bold tracking-wider bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                VIETSUB STUDIO V3.5 PRO ENTERPRISE
                             </h1>
                             <p class="text-[11px] text-gray-400 uppercase tracking-widest">Cloud-Native Edge & Persistent Disk Storage</p>
                         </div>
-                        
                     </div>
                     <div class="flex items-center gap-3 flex-wrap justify-center">
                         <div class="flex items-center space-x-2 bg-gray-900/80 px-3 py-1.5 rounded-lg border border-blue-900/50 text-xs">
@@ -392,7 +349,7 @@ app.get('/', (req, res) => {
                 </div>
             </header>
 
-            <main class="max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
+            <main class="max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow relative z-10">
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-[#070514] border border-blue-900/40 rounded-2xl p-5 shadow-2xl">
                         <h2 class="cyber-font text-sm font-bold text-cyan-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -488,11 +445,40 @@ app.get('/', (req, res) => {
                 </div>
             </main>
 
-            <footer class="bg-[#070514]/90 border-t border-blue-900/40 py-4 px-6 text-center text-xs text-gray-500 mt-6">
+            <footer class="bg-[#070514]/90 border-t border-blue-900/40 py-4 px-6 text-center text-xs text-gray-500 mt-6 relative z-10">
                 <p>VietSub Video Studio V3.5 Pro Enterprise © 2026 - All rights reserved.</p>
             </footer>
 
             <script>
+                // KHỐI LOGIC CHO CHỮ HENDY TRÔI NỔI
+                let hendyX = 50, hendyY = 50;
+                let hendyDX = 2.5, hendyDY = 2.5; // Tốc độ di chuyển
+
+                function animateFloatingHendy() {
+                    const el = document.getElementById('floating-hendy');
+                    if(!el) return;
+                    
+                    const w = window.innerWidth;
+                    const h = window.innerHeight;
+                    const rect = el.getBoundingClientRect();
+                    
+                    // Nảy khi chạm biên màn hình
+                    if (hendyX + rect.width >= w || hendyX <= 0) {
+                        hendyDX = -hendyDX;
+                        el.style.filter = \`drop-shadow(0 0 15px rgba(\${Math.random()*255}, \${Math.random()*255}, 255, 0.8)) hue-rotate(\${Math.random() * 360}deg)\`;
+                    }
+                    if (hendyY + rect.height >= h || hendyY <= 0) {
+                        hendyDY = -hendyDY;
+                        el.style.filter = \`drop-shadow(0 0 15px rgba(\${Math.random()*255}, \${Math.random()*255}, 255, 0.8)) hue-rotate(\${Math.random() * 360}deg)\`;
+                    }
+                    
+                    hendyX += hendyDX;
+                    hendyY += hendyDY;
+                    
+                    el.style.transform = \`translate(\${hendyX}px, \${hendyY}px)\`;
+                    requestAnimationFrame(animateFloatingHendy);
+                }
+
                 function appendLog(msg, type = 'INFO') {
                     const consoleDiv = document.getElementById('log-console');
                     if (!consoleDiv) return;
@@ -553,9 +539,7 @@ app.get('/', (req, res) => {
                         const data = await res.json();
                         document.getElementById('tele-uptime').innerText = data.uptimeSeconds + 's';
                         document.getElementById('tele-memory').innerText = data.memoryRssMb + ' MB';
-                    } catch (err) {
-                        console.warn('Stats error:', err);
-                    }
+                    } catch (err) {}
                 }
 
                 async function fetchJobs() {
@@ -592,14 +576,16 @@ app.get('/', (req, res) => {
                                 <td class="py-3 px-4 text-gray-400">\${j.timestamp}</td>
                             </tr>
                         \`).join('');
-                    } catch (err) {
-                        console.warn('Fetch jobs error:', err);
-                    }
+                    } catch (err) {}
                 }
 
                 setInterval(fetchJobs, 3000);
                 setInterval(fetchSystemStats, 5000);
-                window.onload = () => { fetchJobs(); fetchSystemStats(); };
+                window.onload = () => { 
+                    fetchJobs(); 
+                    fetchSystemStats(); 
+                    animateFloatingHendy(); // Khởi chạy hiệu ứng chữ HENDY trôi nổi
+                };
             </script>
         </body>
         </html>
@@ -612,7 +598,6 @@ function printAnimatedCustomBanner() {
     const intervalId = setInterval(() => {
         console.clear();
         console.log("\x1b[36m============================================================================\x1b[0m");
-        
         activeLines.forEach((line, lineIdx) => {
             let coloredLine = "";
             for (let i = 0; i < line.length; i++) {
@@ -620,13 +605,10 @@ function printAnimatedCustomBanner() {
                 if (char !== ' ') {
                     const rgb = getThemeColor(step, i, lineIdx, BANNER_CONFIG.colorTheme);
                     coloredLine += `\x1b[38;2;${rgb.r};${rgb.g};${rgb.b}m${char}\x1b[0m`;
-                } else {
-                    coloredLine += char;
-                }
+                } else { coloredLine += char; }
             }
             console.log(coloredLine);
         });
-
         console.log("\x1b[35m============================================================================\x1b[0m");
         console.log(`\x1b[1m\x1b[33m🚀 VIETSUB STUDIO V3.5 PRO (${BANNER_CONFIG.customText}) SẴN SÀNG TẠI CỔNG: ${PORT} [Theme: ${BANNER_CONFIG.colorTheme}]\x1b[0m`);
         console.log(`\x1b[90m(Nhấn Ctrl+C để dừng server)\x1b[0m`);
@@ -650,18 +632,14 @@ function printStableCustomBanner() {
             if (char !== ' ') {
                 const rgb = getThemeColor(10, i, lineIdx, BANNER_CONFIG.colorTheme);
                 coloredLine += `\x1b[38;2;${rgb.r};${rgb.g};${rgb.b}m${char}\x1b[0m`;
-            } else {
-                coloredLine += char;
-            }
+            } else { coloredLine += char; }
         }
         console.log(coloredLine);
     });
     console.log("\x1b[35m============================================================================\x1b[0m");
-    console.log(`\x1b[1m\x1b[33m🚀 VIETSUB STUDIO V3.5 PRO (${BANNER_CONFIG.customText}) ĐANG CHẠY TẠI CỔNG: ${PORT} [Theme: ${BANNER_CONFIG.colorTheme}]\x1b[0m`);
-    console.log(`\x1b[90m(Nhấn Ctrl+C để dừng server)\x1b[0m`);
+    console.log(`\x1b[1m\x1b[33m🚀 VIETSUB STUDIO V3.5 PRO (${BANNER_CONFIG.customText}) ĐANG CHẠY ỔN ĐỊNH TẠI PORT: ${PORT}\x1b[0m`);
 }
 
-// KHỞI ĐỘNG SERVER
 loadPersistedData();
 server.listen(PORT, () => {
     printAnimatedCustomBanner();
