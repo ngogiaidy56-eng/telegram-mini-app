@@ -189,43 +189,30 @@ app.post('/api/jobs/create', (req, res) => {
     res.json({ success: true, jobId });
 });
 
-app.post('/api/ai/manage', async (req, res) => {
+// API mới: Trích xuất và xuất file HTML Dashboard
+app.post('/api/export/html', (req, res) => {
     try {
-        const body = req.body;
-        const prompt = (body.prompt || "").toLowerCase().trim();
-        let resultAction = 'UNKNOWN';
-        let replyMessage = '🤖 AI Quản lý chưa hiểu rõ yêu cầu. Hãy thử: "Chạy tất cả bot", "Thêm 3 bot", hoặc "Trạng thái".';
-
-        if (GEMINI_API_KEY) {
-            try {
-                const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `Bạn là AI Quản Lý Hệ Thống VietSub Studio V3.5 Pro. Người dùng hỏi: "${prompt}". Trả về JSON chuẩn: {"action": "START_ALL_BOTS" | "ADD_JOB" | "SYSTEM_STATUS" | "UNKNOWN", "reply": "tiếng Việt"}` }] }]
-                    })
-                });
-                const aiData = await aiRes.json();
-                const textResp = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (textResp) {
-                    const parsed = JSON.parse(textResp.replace(/```json|```/g, '').trim());
-                    resultAction = parsed.action || 'AI_ACTION';
-                    replyMessage = parsed.reply || replyMessage;
-                }
-            } catch (err) { console.error("[GEMINI ERROR]:", err.message); }
+        const rawPath = req.body.exportPath ? req.body.exportPath.trim() : '';
+        // Mặc định lưu vào thư mục 'exported_ui' nếu user không nhập gì
+        const exportDir = rawPath ? path.resolve(rawPath) : path.join(__dirname, 'exported_ui');
+        
+        // Tự động tạo thư mục nếu chưa tồn tại
+        if (!fs.existsSync(exportDir)) {
+            fs.mkdirSync(exportDir, { recursive: true });
         }
-
-        if (resultAction === 'UNKNOWN') {
-            if (prompt.includes('chạy') || prompt.includes('start')) {
-                resultAction = 'START_ALL_BOTS'; replyMessage = '🚀 AI Manager đã kích hoạt toàn bộ Media Pipelines!';
-            } else if (prompt.includes('thêm') || prompt.includes('add')) {
-                resultAction = 'ADD_JOB'; replyMessage = '➕ AI Manager đã khởi tạo thêm 1 Media Pipeline Job mới!';
-            } else if (prompt.includes('trạng thái') || prompt.includes('status')) {
-                resultAction = 'SYSTEM_STATUS'; replyMessage = `📊 Sức khỏe hệ thống: ONLINE 🟢 (Slaves: ${Object.keys(connectedTabs).length} | Jobs: ${activeVideoJobs.size})`;
-            }
-        }
-        res.json({ success: true, data: { action: resultAction, reply: replyMessage } });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+        
+        const fileName = `VietSub_UI_${new Date().toISOString().replace(/[:.]/g, '-')}.html`;
+        const filePath = path.join(exportDir, fileName);
+        
+        const htmlContent = renderDashboardHTML();
+        fs.writeFileSync(filePath, htmlContent, 'utf8');
+        
+        logSystemEvent(`Đã bóc tách và lưu mã nguồn HTML tại: ${filePath}`, 'SUCCESS');
+        res.json({ success: true, filePath: filePath, fileName: fileName });
+    } catch (err) {
+        logSystemEvent(`Lỗi bóc tách HTML: ${err.message}`, 'ERROR');
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 function broadcastTabList(channel) {
@@ -281,9 +268,10 @@ const heartbeatInterval = setInterval(() => {
 }, 15000);
 wss.on('close', () => clearInterval(heartbeatInterval));
 
-app.get('/', (req, res) => {
+// Hàm gom toàn bộ HTML Layout (Dùng chung cho cả Tải trang và Xuất File)
+function renderDashboardHTML() {
     const totalJobs = activeVideoJobs.size;
-    res.send(`
+    return `
         <!DOCTYPE html>
         <html lang="vi" class="dark">
         <head>
@@ -300,13 +288,12 @@ app.get('/', (req, res) => {
                 ::-webkit-scrollbar-track { background: #030008; }
                 ::-webkit-scrollbar-thumb { background: #3b82f655; border-radius: 3px; }
                 
-                /* Class cho chữ HENDY nổi tự do */
                 #floating-hendy {
                     position: fixed;
                     top: 0; left: 0;
-                    pointer-events: none; /* Xuyên qua chuột, không làm cản trở thao tác */
+                    pointer-events: none;
                     z-index: 9999;
-                    font-size: 3rem; /* Kích thước to rõ */
+                    font-size: 3rem;
                     font-weight: 900;
                     text-transform: uppercase;
                     background: linear-gradient(to right, #00f2fe, #4facfe, #a18cd1, #fbc2eb);
@@ -319,7 +306,6 @@ app.get('/', (req, res) => {
         </head>
         <body class="bg-[#030008] text-gray-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
             
-            <!-- Phần tử HENDY bay lơ lửng -->
             <div id="floating-hendy" class="cyber-font">HENDY</div>
 
             <header class="bg-[#070514]/90 border-b border-blue-900/40 px-6 py-4 sticky top-0 z-50 backdrop-blur-md shadow-2xl">
@@ -384,12 +370,26 @@ app.get('/', (req, res) => {
 
                     <div class="bg-[#070514] border border-blue-900/40 rounded-2xl p-5 shadow-2xl">
                         <h2 class="cyber-font text-sm font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-bolt text-amber-400"></i> Điều Phối Hệ Thống & BullMQ Pipelines
+                            <i class="fa-solid fa-bolt text-amber-400"></i> Điều Phối Hệ Thống & Trích Xuất Code
                         </h2>
-                        <div class="flex flex-wrap gap-3">
+                        <div class="flex flex-wrap gap-3 mb-4">
                             <button onclick="dispatchVideoJob()" class="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/30 flex items-center gap-2">
                                 <i class="fa-solid fa-video"></i> Tạo Job Dịch Vietsub Mới
                             </button>
+                        </div>
+                        
+                        <!-- KHOẢNG MỚI TÍCH HỢP BÓC TÁCH HTML -->
+                        <div class="border-t border-blue-900/40 pt-4">
+                            <h3 class="cyber-font text-[11px] text-gray-400 uppercase font-mono mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-code text-emerald-400"></i> Bóc Tách Source Code HTML
+                            </h3>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="text" id="input-export-path" placeholder="Nhập đường dẫn (VD: D:/Hendy/UI hoặc ./exports)" class="flex-1 bg-gray-900 border border-blue-900/50 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-500">
+                                <button onclick="exportSourceHtml()" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 whitespace-nowrap">
+                                    <i class="fa-solid fa-download"></i> Xuất Tệp .HTML
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-gray-500 mt-2">* Bỏ trống để lưu mặc định vào thư mục <b>exported_ui</b> cùng cấp dự án.</p>
                         </div>
                     </div>
 
@@ -450,9 +450,9 @@ app.get('/', (req, res) => {
             </footer>
 
             <script>
-                // KHỐI LOGIC CHO CHỮ HENDY TRÔI NỔI
+                // Logic HENDY lơ lửng
                 let hendyX = 50, hendyY = 50;
-                let hendyDX = 2.5, hendyDY = 2.5; // Tốc độ di chuyển
+                let hendyDX = 2.5, hendyDY = 2.5;
 
                 function animateFloatingHendy() {
                     const el = document.getElementById('floating-hendy');
@@ -462,7 +462,6 @@ app.get('/', (req, res) => {
                     const h = window.innerHeight;
                     const rect = el.getBoundingClientRect();
                     
-                    // Nảy khi chạm biên màn hình
                     if (hendyX + rect.width >= w || hendyX <= 0) {
                         hendyDX = -hendyDX;
                         el.style.filter = \`drop-shadow(0 0 15px rgba(\${Math.random()*255}, \${Math.random()*255}, 255, 0.8)) hue-rotate(\${Math.random() * 360}deg)\`;
@@ -496,6 +495,27 @@ app.get('/', (req, res) => {
 
                 function clearLogs() {
                     document.getElementById('log-console').innerHTML = '<div class="text-gray-500">[SYSTEM] Nhật ký đã làm sạch.</div>';
+                }
+
+                // GỌI API BÓC TÁCH HTML
+                async function exportSourceHtml() {
+                    const exportPath = document.getElementById('input-export-path').value;
+                    appendLog(\`Bắt đầu bóc tách và trích xuất mã nguồn HTML...\`, 'INFO');
+                    try {
+                        const res = await fetch('/api/export/html', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ exportPath })
+                        });
+                        const json = await res.json();
+                        if (json.success) {
+                            appendLog(\`Đã lưu tệp HTML thành công tại: \${json.filePath}\`, 'SUCCESS');
+                        } else {
+                            appendLog(\`Lỗi trích xuất: \${json.error}\`, 'ERROR');
+                        }
+                    } catch (e) {
+                        appendLog('Lỗi kết nối khi trích xuất: ' + e.message, 'ERROR');
+                    }
                 }
 
                 async function updateBannerConfig() {
@@ -584,12 +604,16 @@ app.get('/', (req, res) => {
                 window.onload = () => { 
                     fetchJobs(); 
                     fetchSystemStats(); 
-                    animateFloatingHendy(); // Khởi chạy hiệu ứng chữ HENDY trôi nổi
+                    animateFloatingHendy(); 
                 };
             </script>
         </body>
         </html>
-    `);
+    `;
+}
+
+app.get('/', (req, res) => {
+    res.send(renderDashboardHTML());
 });
 
 function printAnimatedCustomBanner() {
