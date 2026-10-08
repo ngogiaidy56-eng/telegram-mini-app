@@ -39,7 +39,7 @@ const asciiFonts = {
         "  ╚═══╝  ╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═════╝ "
     ],
     STUDIO: [
-        "███████╗████████╗██╔══██╗██╗   ██╗██╗ _____",
+        "███████╗████████╗██╔══██╗██╗   ██╗██╗ _____ ",
         "██╔════╝╚══██╔══╝██╔══██║██║   ██║██║|___  |",
         "███████╗   ██║   ██║  ██║██║   ██║██║    / / ",
         "╚════██║   ██║   ██║  ██║██║   ██║██║   / /  ",
@@ -156,7 +156,6 @@ app.post('/api/banner/update', (req, res) => {
     savePersistedData();
     logSystemEvent(`Đã cập nhật Banner cấu hình mới: [${BANNER_CONFIG.customText} - Theme: ${BANNER_CONFIG.colorTheme}]`, 'SUCCESS');
     
-    // Broadcast cấu hình mới tới mọi client WebSocket
     const payload = JSON.stringify({ action: 'BANNER_UPDATED', bannerConfig: BANNER_CONFIG });
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) client.send(payload);
@@ -344,6 +343,22 @@ app.get('/', (req, res) => {
                 ::-webkit-scrollbar { width: 6px; height: 6px; }
                 ::-webkit-scrollbar-track { background: #030008; }
                 ::-webkit-scrollbar-thumb { background: #3b82f655; border-radius: 3px; }
+                
+                /* Hiệu ứng cuộn chữ */
+                @keyframes scroll-left {
+                    0% { transform: translateX(100%); }
+                    100% { transform: translateX(-100%); }
+                }
+                .text-scroller {
+                    display: inline-block;
+                    white-space: nowrap;
+                    animation: scroll-left 10s linear infinite; 
+                }
+                .scroll-container {
+                    overflow: hidden;
+                    width: 100%;
+                    max-width: 400px;
+                }
             </style>
         </head>
         <body class="bg-[#030008] text-gray-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
@@ -353,12 +368,15 @@ app.get('/', (req, res) => {
                         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
                             <i class="fa-solid fa-cube text-white text-lg"></i>
                         </div>
-                        <div>
-                            <h1 class="cyber-font text-xl font-bold tracking-wider bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                VIETSUB STUDIO V3.5 PRO ENTERPRISE
+                        
+                        <!-- ÁP DỤNG CHỮ CHẠY VÀO ĐÂY -->
+                        <div class="scroll-container">
+                            <h1 class="text-scroller cyber-font text-xl font-bold tracking-wider bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                HENDY - VIETSUB STUDIO V3.5 PRO ENTERPRISE
                             </h1>
                             <p class="text-[11px] text-gray-400 uppercase tracking-widest">Cloud-Native Edge & Persistent Disk Storage</p>
                         </div>
+                        
                     </div>
                     <div class="flex items-center gap-3 flex-wrap justify-center">
                         <div class="flex items-center space-x-2 bg-gray-900/80 px-3 py-1.5 rounded-lg border border-blue-900/50 text-xs">
@@ -639,9 +657,11 @@ function printStableCustomBanner() {
         console.log(coloredLine);
     });
     console.log("\x1b[35m============================================================================\x1b[0m");
-    console.log(`\x1b[1m\x1b[32m🚀 VIETSUB STUDIO V3.5 PRO (${BANNER_CONFIG.customText}) SẴN SÀNG TẠI CỔNG: ${PORT} [Theme: ${BANNER_CONFIG.colorTheme}]\x1b[0m\n`);
+    console.log(`\x1b[1m\x1b[33m🚀 VIETSUB STUDIO V3.5 PRO (${BANNER_CONFIG.customText}) ĐANG CHẠY TẠI CỔNG: ${PORT} [Theme: ${BANNER_CONFIG.colorTheme}]\x1b[0m`);
+    console.log(`\x1b[90m(Nhấn Ctrl+C để dừng server)\x1b[0m`);
 }
 
+// KHỞI ĐỘNG SERVER
 loadPersistedData();
 server.listen(PORT, () => {
     printAnimatedCustomBanner();
