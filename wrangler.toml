@@ -1,0 +1,7 @@
+name = "viet-sub-studio-bot"
+main = "build/dist/js/productionExecutable/your-project-name.js" # Đường dẫn file JS build từ Kotlin
+compatibility_date = "2026-03-01"
+
+[assets]
+directory = "./public" # Thư mục chứa HTML, CSS, JS tĩnh của bạn
+binding = "ASSETS"
