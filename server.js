@@ -3,46 +3,25 @@ const http = require('http');
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-const crypto = require('crypto'); // Chuẩn bị cho HMAC Edge Validation
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+// TÊN MIỀN CỐ ĐỊNH CỦA BẠN TRÊN CLOUDFLARE
+const FIXED_DOMAIN = 'telegram-mini-app.ngogiaidy56.workers.dev';
 const PORT = process.env.PORT || 8080;
 
-// Các tệp tĩnh xuất tự động (S.O.T)
 const HTML_FILE_PATH = path.join(__dirname, 'index.html');
 const JSON_FILE_PATH = path.join(__dirname, 'system_state.json');
 
-// ==============================================================
-// 🧠 TIER 3: RAM VĨNH CỬU & QUẢN LÝ TRẠNG THÁI (REDIS MOCKUP)
-// ==============================================================
-let connectedClients = {}; // Quản lý Web/Telegram/Native App
-let activeJobs = 0; // Mô phỏng số lượng Job trong BullMQ
-
-// Hàm tự động quét và lấy IP LAN (IPv4) của máy chủ hiện tại
-function getNetworkIP() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
-            }
-        }
-    }
-    return '127.0.0.1';
-}
+let connectedClients = {}; 
+let activeJobs = 0; 
 
 // ==============================================================
-// 🔄 HÀM TẠO GIAO DIỆN DASHBOARD (CHUẨN KIẾN TRÚC V3.0)
+// 🔄 TÍNH NĂNG MỚI: HTML TĨNH TÍCH HỢP AJAX REAL-TIME TỰ ĐỘNG
 // ==============================================================
 function generateHTML() {
-    const activeChannels = [...new Set(Object.values(connectedClients).map(t => t.channel))];
-    const edgeNodeCount = Array.from(wss.clients).filter(c => c.isEdgeNode).length; // Trạm mẹ đóng vai trò Edge
-    const clientCount = Object.keys(connectedClients).length;
-
     return `
         <!DOCTYPE html>
         <html lang="vi">
@@ -57,13 +36,17 @@ function generateHTML() {
                 h1 { color: #facc15; font-size: 24px; text-align: center; text-transform: uppercase; margin-top: 0; letter-spacing: 1px; }
                 .subtitle { text-align: center; color: #9ca3af; font-size: 13px; margin-bottom: 25px; }
                 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
-                .card { background: rgba(0,0,0,0.6); border: 1px solid #374151; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; }
+                .card { background: rgba(0,0,0,0.6); border: 1px solid #374151; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; transition: all 0.3s ease; }
                 .card.edge { border-left-color: #10b981; }
                 .card.queue { border-left-color: #8b5cf6; }
                 .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #d1d5db; text-transform: uppercase; }
-                .value { font-size: 32px; font-weight: 700; color: #fff; text-shadow: 0 0 15px currentColor; }
+                .value { font-size: 32px; font-weight: 700; color: #fff; text-shadow: 0 0 15px currentColor; transition: opacity 0.2s; }
                 .text-blue { color: #60a5fa; } .text-green { color: #34d399; } .text-purple { color: #a78bfa; }
                 .footer { margin-top: 25px; text-align: center; font-size: 12px; color: #6b7280; padding-top: 15px; border-top: 1px dashed #374151; }
+                
+                /* Hiệu ứng chớp nháy khi có dữ liệu mới */
+                @keyframes flash { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+                .update-flash { animation: flash 0.5s ease-in-out; }
             </style>
         </head>
         <body>
@@ -74,28 +57,56 @@ function generateHTML() {
                 <div class="grid">
                     <div class="card edge">
                         <h3><span style="font-size:16px">⚡</span> Cloudflare Edge Nodes</h3>
-                        <div class="value text-green">${edgeNodeCount}</div>
+                        <div class="value text-green" id="edgeNodeCount">0</div>
                     </div>
                     <div class="card">
                         <h3><span style="font-size:16px">📱</span> Connected Clients (Tier 1)</h3>
-                        <div class="value text-blue">${clientCount}</div>
+                        <div class="value text-blue" id="clientCount">0</div>
                     </div>
                     <div class="card queue">
-                        <h3><span style="font-size:16px">🔄</span> Media Pipelines / BullMQ</h3>
-                        <div class="value text-purple">${activeChannels.length} <span>luồng</span></div>
+                        <h3><span style="font-size:16px">🔄</span> Media Pipelines</h3>
+                        <div class="value text-purple" id="pipelineCount">0 luồng</div>
                     </div>
                 </div>
 
                 <div class="footer">
-                    Trạng thái: 🟢 Đang hoạt động | Core Node.js | Single Source of Truth (S.O.T) Tích hợp | Cổng: ${PORT}
+                    Trạng thái: <span id="statusIndicator">🟢 Đang đồng bộ...</span> | Tên miền: ${FIXED_DOMAIN}
                 </div>
             </div>
+
+            <!-- TÍNH NĂNG MỚI: Script tự động lấy dữ liệu không cần load lại trang -->
+            <script>
+                async function fetchSystemState() {
+                    try {
+                        const response = await fetch('/api/state');
+                        if (!response.ok) throw new Error('Network err');
+                        const data = await response.json();
+                        
+                        document.getElementById('edgeNodeCount').innerText = data.tier2_edgeNodes;
+                        document.getElementById('clientCount').innerText = data.tier1_clients;
+                        document.getElementById('pipelineCount').innerText = data.tier3_activePipelines.length + ' luồng';
+                        document.getElementById('statusIndicator').innerText = '🟢 Đang hoạt động (Live)';
+                        
+                        // Thêm hiệu ứng chớp nhẹ khi cập nhật
+                        document.querySelectorAll('.value').forEach(el => {
+                            el.classList.remove('update-flash');
+                            void el.offsetWidth; // trigger reflow
+                            el.classList.add('update-flash');
+                        });
+                    } catch (error) {
+                        document.getElementById('statusIndicator').innerText = '🔴 Mất kết nối Server';
+                    }
+                }
+
+                // Gọi ngay lập tức và lặp lại mỗi 2 giây
+                fetchSystemState();
+                setInterval(fetchSystemState, 2000);
+            </script>
         </body>
         </html>
     `;
 }
 
-// Bóc tách tự động ra File khi có thay đổi trạng thái
 function autoExportData() {
     try {
         fs.writeFileSync(HTML_FILE_PATH, generateHTML(), 'utf8');
@@ -117,10 +128,23 @@ function autoExportData() {
 }
 
 // ==============================================================
-// 🌐 API GATEWAY (TIER 3)
+// 🌐 TẠO API CHO DASHBOARD TRUY XUẤT REAL-TIME
 // ==============================================================
 app.get('/', (req, res) => {
     res.send(generateHTML());
+});
+
+// Endpoint trả về dữ liệu thuần JSON để giao diện gọi (Script sẽ gọi cái này)
+app.get('/api/state', (req, res) => {
+    const activeChannels = [...new Set(Object.values(connectedClients).map(t => t.channel))];
+    const edgeNodeCount = Array.from(wss.clients).filter(c => c.isEdgeNode).length;
+    
+    res.json({
+        tier1_clients: Object.keys(connectedClients).length,
+        tier2_edgeNodes: edgeNodeCount,
+        tier3_activePipelines: activeChannels,
+        status: "ONLINE"
+    });
 });
 
 function broadcastTabList(channel) {
@@ -135,7 +159,7 @@ function broadcastTabList(channel) {
 }
 
 // ==============================================================
-// ⚡ WEBSOCKET BẤT ĐỒNG BỘ
+// ⚡ WEBSOCKET XỬ LÝ KẾT NỐI
 // ==============================================================
 wss.on('connection', (ws) => {
     ws.isAlive = true;
@@ -153,7 +177,6 @@ wss.on('connection', (ws) => {
             const channel = data.channel || ws.channel || 'GLOBAL-PIPELINE';
             ws.channel = channel; 
 
-            // Xác định đây là Edge Node (Trạm Mẹ) hoặc Worker CF gọi về
             if (action === 'EDGE_PING_REQUEST' || action === 'REGISTER_EDGE_NODE') {
                 if (!ws.isEdgeNode) {
                     ws.isEdgeNode = true;
@@ -172,7 +195,6 @@ wss.on('connection', (ws) => {
                 return;
             }
 
-            // Đăng ký Client (Telegram App, Native App, PWA)
             if (action === 'REGISTER_CLIENT_APP' || action === 'CLIENT_PING_RESPONSE') {
                 if (data.value && data.value.id) {
                     ws.clientId = data.value.id; 
@@ -183,7 +205,6 @@ wss.on('connection', (ws) => {
                 return;
             }
 
-            // Định tuyến thông điệp trong cùng Pipeline
             wss.clients.forEach((client) => {
                 if (client !== ws && client.readyState === WebSocket.OPEN && client.channel === channel) {
                     client.send(message.toString());
@@ -206,7 +227,6 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Giữ kết nối & Dọn dẹp
 const interval = setInterval(() => {
     let hasChanges = false;
     wss.clients.forEach((ws) => {
@@ -234,20 +254,19 @@ wss.on('close', () => clearInterval(interval));
 server.listen(PORT, () => {
     autoExportData();
     
-    // Tự động gán Domain hoặc IP LAN với Port linh hoạt
-    const PUBLIC_HOST = process.env.PUBLIC_HOST || getNetworkIP(); 
-    const wsUrl = `ws://${PUBLIC_HOST}:${PORT}`;
-    const webUrl = `http://${PUBLIC_HOST}:${PORT}`;
+    // Gán Domain cố định cho WebSocket và Web API
+    const wsUrl = `wss://${FIXED_DOMAIN}`;
+    const webUrl = `https://${FIXED_DOMAIN}`;
     
     console.clear();
     console.log("\x1b[36m============================================================================\x1b[0m");
     console.log(`\x1b[33m
     [ 3. CORE BACKEND TIER (NODE.JS) ]
-    🛡️  API Gateway | Async Workers (BullMQ) | Redis Config
+    🛡️  API Gateway | Async Workers (BullMQ) | Real-time S.O.T
     \x1b[0m`);
     console.log("\x1b[36m============================================================================\x1b[0m");
     console.log(`\x1b[1m\x1b[32m✅ Hệ thống CORE BACKEND V3.0 Đã Sẵn Sàng!\x1b[0m`);
-    console.log(`\x1b[1m\x1b[36m🌐 Bảng Điều Khiển:       \x1b[0m\x1b[4m${webUrl}\x1b[0m`);
+    console.log(`\x1b[1m\x1b[36m🌐 Bảng Điều Khiển Live:  \x1b[0m\x1b[4m${webUrl}\x1b[0m`);
     console.log(`\x1b[1m\x1b[35m⚡ Cổng WebSocket Node:   \x1b[0m\x1b[4m${wsUrl}\x1b[0m`);
-    console.log(`\x1b[90m(Ghi chú: HTML & JSON được bóc tách tự động ra S.O.T Storage mỗi khi có sự kiện)\x1b[0m\n`);
+    console.log(`\x1b[90m(Hỗ trợ xuất HTML chuẩn tĩnh, auto-fetch qua API ${webUrl}/api/state)\x1b[0m\n`);
 });
