@@ -7,9 +7,6 @@ const ADMIN_ID = '6138197737';
 const MINI_APP_URL = 'https://ngogiaidy56-eng.github.io/BOT-TELE'; 
 const WEB_APP_URL = 'https://telegram-mini-app.ngogiaidy56.workers.dev';
 
-// 🌐 URL Máy chủ Core Backend Node.js của bạn (Thay bằng Domain/IP thật của bạn)
-const CORE_BACKEND_URL = 'https://api.vietsub.studio'; 
-
 let users = {}; 
 const userStates = {};   // Quản lý trạng thái nhập liệu tạm thời
 const BRANDS = ["SC88", "C168", "CM88", "F8BET", "RR88", "MM88", "GG88", "U888", "J88", "88CLB", "ABC8", "XX8", "KJC_CU"];
@@ -169,15 +166,6 @@ Buổi chiều vui vẻ nhé, *${u.name}* (ID: \`${chatId}\`)
         await callTelegramApi('sendMessage', { chat_id: chatId, text: successBuff, parse_mode: 'Markdown', reply_markup: kb }, botToken);
         return;
       }
-
-      // 4. NHẬN LINK VIDEO VIETSUB (Bổ sung mới)
-      if (action === 'waiting_video_link') {
-        delete userStates[chatId];
-        const successMsg = `🎬 *ĐÃ NHẬN YÊU CẦU*\n\nVideo của bạn đang được đưa vào hàng đợi Media Pipeline của Core Backend để xử lý. Vui lòng chờ thông báo kết quả.`;
-        const kb = { inline_keyboard: [[{ text: "🔙 Quay lại Menu Chính", callback_data: "back_start" }]] };
-        await callTelegramApi('sendMessage', { chat_id: chatId, text: successMsg, parse_mode: 'Markdown', reply_markup: kb }, botToken);
-        return;
-      }
     }
   }
 
@@ -241,6 +229,7 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       };
     }
 
+    // 1. LIÊN MINH KJC CŨ (Bao gồm RR88, MM88, GG88 & Kho Acc Liên Kết)
     else if (data === 'shop_kjc_cu') {
       const rr88Count = (u.accountKho.RR88 || []).length;
       const mm88Count = (u.accountKho.MM88 || []).length;
@@ -267,6 +256,7 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       };
     }
 
+    // 2. KHO ACC KJC CŨ LIÊN KẾT BOT
     else if (data === 'shop_kjc_cu_kho') {
       const accList = u.linkedAccounts.KJC_CU || [];
       let str = accList.length > 0 ? accList.map((a, i) => `${i+1}. \`${a}\``).join('\n') : 'Bạn chưa liên kết tài khoản KJC CŨ nào.';
@@ -280,12 +270,14 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       };
     }
 
+    // Xóa liên kết KJC CŨ
     else if (data === 'clear_link_KJC_CU') {
       u.linkedAccounts.KJC_CU = [];
       subMenuText = `🗑️ Đã xóa toàn bộ liên kết tài khoản Liên Minh KJC CŨ!`;
       subMenuKeyboard = { inline_keyboard: [[{ text: '« Quay lại', callback_data: 'shop_kjc_cu_kho' }]] };
     }
 
+    // 3. LIÊN MINH ABCVIP
     else if (data === 'shop_abcvip_group') {
       subMenuText = (
         `📊 *THỐNG KÊ ĐƠN ABCVIP:*\n` +
@@ -303,7 +295,7 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
           [{ text: '❤️ U888 MINIGAME', callback_data: 'shop_kho_detail_U888' }],
           [{ text: '❤️ J88 MINIGAME', callback_data: 'shop_kho_detail_J88' }],
           [{ text: '❤️ 88CLB MINIGAME', callback_data: 'shop_kho_detail_88CLB' }],
-          [{ text: '❤ ABC8 MINIGAME', callback_data: 'shop_kho_detail_ABC8' }],
+          [{ text: '❤️️ ABC8 MINIGAME', callback_data: 'shop_kho_detail_ABC8' }],
           [{ text: '❤️ XX8 MINIGAME', callback_data: 'shop_kho_detail_XX8' }],
           [{ text: '🌊 【KHO ACC ABCVIP LIÊN KẾT BOT】', callback_data: 'shop_abcvip_kho' }],
           [{ text: '« Quay lại', callback_data: 'shop_code_mini' }]
@@ -311,6 +303,7 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       };
     }
 
+    // 4. KHO ACC ABCVIP LIÊN KẾT
     else if (data === 'shop_abcvip_kho') {
       const accList = u.linkedAccounts.ABCVIP || [];
       let str = accList.length > 0 ? accList.map((a, i) => `${i+1}. \`${a}\``).join('\n') : 'Bạn chưa liên kết tài khoản ABCVIP nào.';
@@ -324,12 +317,14 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       };
     }
 
+    // 5. HIỂN THỊ CHI TIẾT KHO ACC CỦA TỪNG THƯƠNG HIỆU
     else if (data.startsWith('shop_kho_detail_')) {
       const brand = data.replace('shop_kho_detail_', '');
       const list = u.accountKho[brand] || [];
       const total = list.length;
       const checked = list.filter(item => item.checked).length;
       const unchecked = total - checked;
+
       const emptyNotice = total === 0 ? '\n\n_Kho chưa có tài khoản nào._' : '';
 
       subMenuText = (
@@ -351,18 +346,21 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       };
     }
 
+    // Nút Thêm Acc vào kho
     else if (data.startsWith('add_acc_')) {
       const brand = data.replace('add_acc_', '');
       userStates[chatId] = { action: 'waiting_add_acc', brand: brand };
       subMenuText = `➕ *THÊM ACC VÀO KHO ${brand}*\n\n👉 Vui lòng nhập **Tài khoản | Mật khẩu** của bạn vào khung chat:`;
     }
 
+    // Nút Check Acc
     else if (data.startsWith('check_acc_')) {
       const brand = data.replace('check_acc_', '');
       subMenuText = `🔍 *KIỂM TRA TÀI KHOẢN ${brand}*\n\nHệ thống đã quét toàn bộ tài khoản trong kho. Tất cả tài khoản hợp lệ!`;
       subMenuKeyboard = { inline_keyboard: [[{ text: '« Quay lại', callback_data: `shop_kho_detail_${brand}` }]] };
     }
 
+    // Nút Xóa Acc trong kho
     else if (data.startsWith('clear_acc_')) {
       const brand = data.replace('clear_acc_', '');
       u.accountKho[brand] = [];
@@ -370,17 +368,20 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       subMenuKeyboard = { inline_keyboard: [[{ text: '« Quay lại', callback_data: `shop_kho_detail_${brand}` }]] };
     }
 
+    // Xóa liên kết ABCVIP
     else if (data === 'clear_link_ABCVIP') {
       u.linkedAccounts.ABCVIP = [];
       subMenuText = `🗑️ Đã xóa toàn bộ liên kết tài khoản ABCVIP!`;
       subMenuKeyboard = { inline_keyboard: [[{ text: '« Quay lại', callback_data: 'shop_abcvip_kho' }]] };
     }
 
+    // Tính năng phụ KJC
     else if (data === 'shop_kjc') {
       subMenuText = `🚀 *LIÊN MINH KJC*\nĐang cập nhật các gói code quà tặng KJC mới nhất...`;
       subMenuKeyboard = { inline_keyboard: [[{ text: '« Quay lại', callback_data: 'shop_code_mini' }]] };
     }
 
+    // --- MENU MẠNG XÃ HỘI & NẠP TIỀN ---
     else if (data === 'social_service') {
       subMenuText = '🌐 *DỊCH VỤ MẠNG XÃ HỘI*\nHệ thống buff tương tác tự động. Vui lòng chọn dịch vụ:';
       subMenuKeyboard = {
@@ -391,21 +392,19 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
         ]
       };
     } 
-
     else if (data === 'buff_tiktok') {
       userStates[chatId] = { action: 'waiting_live_link', platform: 'TikTok' };
       subMenuText = '🎵 *BUFF 1K MẮT TIKTOK LIVE*\n\n👉 Gửi **Link hoặc Username Livestream TikTok** vào khung chat:';
     }
-
     else if (data === 'buff_fb') {
       userStates[chatId] = { action: 'waiting_live_link', platform: 'Facebook' };
       subMenuText = '📘 *BUFF 1K MẮT FACEBOOK LIVE*\n\n👉 Gửi **Link Livestream Facebook** vào khung chat:';
     }
-
     else if (data === 'deposit') {
       subMenuText = '💳 *NẠP TIỀN VÀO HỆ THỐNG*\nChuyển khoản tự động qua Momo/Banking.\nSố dư hiện tại của bạn: `' + u.balance.toLocaleString() + ' VNĐ`';
     } 
 
+    // --- TRUNG TÂM QUẢN LÝ TÀI KHOẢN (TRUNG TÂM KHÁCH HÀNG) ---
     else if (data === 'cshk_center') {
       subMenuText = (
         `🎴 *TRUNG TÂM QUẢN LÝ TÀI KHOẢN*\n\n` +
@@ -422,6 +421,7 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       };
     }
 
+    // --- ADMIN PANEL ---
     else if (data === 'admin_panel') {
       if (chatId !== ADMIN_ID) {
         subMenuText = '⛔ Bạn không có quyền truy cập khu vực quản trị!';
@@ -436,7 +436,6 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
         };
       }
     }
-
     else if (data === 'admin_list_users') {
       if (chatId !== ADMIN_ID) return;
       let userListStr = "";
@@ -448,32 +447,6 @@ Chào mừng bạn quay lại, *${u.name}* (ID: \`${chatId}\`)
       }
       subMenuText = `👥 *DANH SÁCH THÀNH VIÊN*\n\n${userListStr || 'Chưa có user nào.'}`;
       subMenuKeyboard = { inline_keyboard: [[{ text: '◀ Quay lại Admin', callback_data: 'admin_panel' }]] };
-    }
-
-    // ==========================================
-    // 🤖 TÍCH HỢP GỌI VỀ CORE BACKEND NODE.JS (TIER 3)
-    // ==========================================
-    else if (data === 'bot_vietsub') {
-      try {
-        await fetch(`${CORE_BACKEND_URL}/api/bot-trigger`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            chatId: chatId, 
-            userName: u.name, 
-            action: 'START_VIETSUB_PIPELINE' 
-          })
-        });
-
-        subMenuText = `🎬 *BOT DỊCH VỤ VIETSUB V3.0*\n\n✅ Đã gửi lệnh kích hoạt luồng xử lý Video AI đến Core Backend!\n\nHệ thống \`Media Pipelines\` đang chuẩn bị tài nguyên. Vui lòng gửi link Video bạn muốn xử lý vào đây.`;
-        userStates[chatId] = { action: 'waiting_video_link' };
-      } catch (err) {
-        subMenuText = `🔴 *MẤT KẾT NỐI*\nKhông thể kết nối đến Máy chủ Core Backend (Node.js). Vui lòng thử lại sau.`;
-      }
-      
-      subMenuKeyboard = {
-        inline_keyboard: [[{ text: '🔙 Quay lại Menu Chính', callback_data: 'back_start' }]]
-      };
     }
 
     // Cập nhật lại giao diện tin nhắn
