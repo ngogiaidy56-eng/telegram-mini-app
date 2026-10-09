@@ -5,6 +5,10 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
+
+// Kích hoạt middleware đọc dữ liệu JSON từ request body (Rất quan trọng cho API Webhook)
+app.use(express.json());
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
@@ -19,7 +23,7 @@ let connectedClients = {};
 let activeJobs = 0; 
 
 // ==============================================================
-// 🔄 TÍNH NĂNG MỚI: HTML TĨNH TÍCH HỢP AJAX REAL-TIME TỰ ĐỘNG
+// 🔄 HTML TĨNH TÍCH HỢP AJAX REAL-TIME TỰ ĐỘNG
 // ==============================================================
 function generateHTML() {
     return `
@@ -74,7 +78,7 @@ function generateHTML() {
                 </div>
             </div>
 
-            <!-- TÍNH NĂNG MỚI: Script tự động lấy dữ liệu không cần load lại trang -->
+            <!-- Script tự động lấy dữ liệu không cần load lại trang -->
             <script>
                 async function fetchSystemState() {
                     try {
@@ -128,13 +132,15 @@ function autoExportData() {
 }
 
 // ==============================================================
-// 🌐 TẠO API CHO DASHBOARD TRUY XUẤT REAL-TIME
+// 🌐 REST API (DASHBOARD & WEBHOOK TỪ CLOUDFLARE WORKER)
 // ==============================================================
+
+// Render trang Dashboard
 app.get('/', (req, res) => {
     res.send(generateHTML());
 });
 
-// Endpoint trả về dữ liệu thuần JSON để giao diện gọi (Script sẽ gọi cái này)
+// Endpoint trả về dữ liệu thuần JSON để giao diện gọi 
 app.get('/api/state', (req, res) => {
     const activeChannels = [...new Set(Object.values(connectedClients).map(t => t.channel))];
     const edgeNodeCount = Array.from(wss.clients).filter(c => c.isEdgeNode).length;
@@ -146,6 +152,38 @@ app.get('/api/state', (req, res) => {
         status: "ONLINE"
     });
 });
+
+// 🤖 API LẮNG NGHE LỆNH TỪ TELEGRAM BOT (CLOUDFLARE WORKER)
+app.post('/api/bot-trigger', (req, res) => {
+    const { chatId, userName, action } = req.body;
+
+    if (action === 'START_VIETSUB_PIPELINE') {
+        const jobId = 'BOT_JOB_' + chatId + '_' + Date.now();
+        
+        // Đưa Bot User vào danh sách Pipeline đang chạy để Dashboard cập nhật
+        if (typeof connectedClients !== 'undefined') {
+            connectedClients[jobId] = { 
+                id: jobId, 
+                channel: 'TELEGRAM-PIPELINE', 
+                user: userName,
+                status: 'WAITING_FOR_VIDEO'
+            };
+        }
+
+        // Kích hoạt hàm xuất dữ liệu S.O.T ngay lập tức
+        if (typeof autoExportData === 'function') {
+            autoExportData();
+        }
+
+        console.log(`[TELEGRAM BOT] 🚀 User ${userName} vừa mở 1 luồng Vietsub Pipeline mới!`);
+        
+        // Trả về HTTP 200 để Cloudflare Worker không bị Timeout
+        res.status(200).json({ success: true, message: "Đã kích hoạt Pipeline" });
+    } else {
+        res.status(400).json({ error: "Lệnh không xác định" });
+    }
+});
+
 
 function broadcastTabList(channel) {
     const clientsInChannel = Object.values(connectedClients).filter(t => t.channel === channel);
@@ -159,7 +197,7 @@ function broadcastTabList(channel) {
 }
 
 // ==============================================================
-// ⚡ WEBSOCKET XỬ LÝ KẾT NỐI
+// ⚡ WEBSOCKET XỬ LÝ KẾT NỐI (CORE COMMUNICATION TIER)
 // ==============================================================
 wss.on('connection', (ws) => {
     ws.isAlive = true;
