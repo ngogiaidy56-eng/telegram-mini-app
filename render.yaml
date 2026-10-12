@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: hendy-cybertech-admini-vietsub
+    runtime: docker
+    healthCheckPath: /api/health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: SUBTITLE_ALLOWED_IDS
+        value: ""
+      - key: WEBHOOK_SECRET_TOKEN
+        sync: false
+      - key: ADMIN_PANEL_PASSWORD
+        sync: false
+      - key: SERVICE_API_KEY
+        sync: false
+      - key: ADMIN_PANEL_URL
+        sync: false
+      - key: ADMIN_DATA_DIR
+        value: data
+      - key: MINI_APP_URL
+        sync: false
+      - key: WEB_APP_URL
+        sync: false
+      - key: CORE_BACKEND_URL
+        sync: false
+      - key: SETTINGS_FILE
+        value: data/user-settings.json
+      - key: MAX_VIDEO_MB
+        value: "20"
+      - key: NODE_ENV
+        value: production

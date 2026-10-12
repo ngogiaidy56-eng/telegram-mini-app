@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e16">
+  <title>HENDY Admin Pro · Operations Console</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <div class="bg-glow glow-a"></div><div class="bg-glow glow-b"></div>
+  <section id="login-view" class="login-shell">
+    <div class="login-card">
+      <div class="brand-mark">H<span>+</span></div>
+      <p class="eyebrow">HENDY CYBERTECH · PRIVATE CONSOLE</p>
+      <h1>Admin <span>Pro</span></h1>
+      <p class="muted">Quản trị vận hành, bảo trì, cấu hình Vietsub và API từ một bảng điều khiển riêng.</p>
+      <form id="login-form">
+        <label for="admin-password">Mật khẩu quản trị</label>
+        <input id="admin-password" name="password" type="password" autocomplete="current-password" required minlength="12" placeholder="Nhập mật khẩu Admin Pro">
+        <button class="btn btn-primary full" type="submit">Đăng nhập <span>↗</span></button>
+        <p id="login-error" class="form-error" role="alert"></p>
+      </form>
+      <div class="secure-note"><span class="status-dot"></span> Phiên bảo mật · Cookie HttpOnly · SameSite Strict</div>
+      <p class="tiny muted">Quản trị độc lập với menu bot. Cần cấu hình ADMIN_PANEL_PASSWORD trên máy chủ.</p>
+    </div>
+  </section>
+
+  <div id="app-view" class="layout hidden">
+    <aside class="sidebar">
+      <a class="brand" href="/admin"><span class="brand-mark small">H<span>+</span></span><span><b>HENDY</b><small>ADMIN PRO</small></span></a>
+      <div class="workspace"><span class="workspace-icon">◈</span><div><b>Operations</b><small>Production workspace</small></div><span class="chevron">⌄</span></div>
+      <p class="nav-label">WORKSPACE</p>
+      <nav id="navigation">
+        <button class="nav-item active" data-section="overview"><i>▦</i> Tổng quan <span class="nav-arrow">›</span></button>
+        <button class="nav-item" data-section="maintenance"><i>⛭</i> Bảo trì & vận hành</button>
+        <button class="nav-item" data-section="vietsub"><i>CC</i> Bot & Vietsub</button>
+        <button class="nav-item" data-section="connectors"><i>⇄</i> API & tích hợp</button>
+        <button class="nav-item" data-section="developer"><i>⌘</i> API Explorer</button>
+        <button class="nav-item" data-section="audit"><i>≋</i> Nhật ký hoạt động</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="operator"><div class="avatar">HA</div><div><b>HENDY Admin</b><small>Platform operator</small></div><button id="logout-button" class="icon-button" title="Đăng xuất">↗</button></div><div class="sidebar-foot"><span class="status-dot"></span> Secure control plane <span>v3.2</span></div></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar"><div><p class="breadcrumbs">HENDY / <span id="breadcrumb-current">Tổng quan</span></p><h1 id="page-title">Tổng quan hệ thống</h1></div><div class="topbar-actions"><div class="live-pill"><span class="status-dot"></span><span id="global-status">Đang kiểm tra</span></div><button id="refresh-button" class="btn btn-ghost">↻ <span>Làm mới</span></button><div class="date-chip" id="current-time">--:--</div></div></header>
+      <div id="global-banner" class="global-banner hidden"></div>
+
+      <section class="content-section active" id="section-overview">
+        <div class="welcome-row"><div><p class="eyebrow">SYSTEM HEALTH · REAL TIME</p><h2>Chào mừng trở lại, <span>Admin.</span></h2><p class="muted">Theo dõi sức khỏe dịch vụ và điều khiển các module từ một nơi.</p></div><div class="last-sync">● <span id="last-updated">Chưa đồng bộ</span></div></div>
+        <div class="metric-grid">
+          <article class="metric-card"><div class="metric-top"><span>Service uptime</span><span class="metric-icon green">◷</span></div><div class="metric-value" id="metric-uptime">—</div><div class="metric-bottom"><span class="positive">● Online process</span><span class="metric-caption">Thời gian chạy</span></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Người dùng ghi nhận</span><span class="metric-icon blue">♙</span></div><div class="metric-value" id="metric-users">—</div><div class="metric-bottom"><span class="neutral">Local runtime</span><span class="metric-caption">Không thay thế DB</span></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Tác vụ Vietsub</span><span class="metric-icon purple">CC</span></div><div class="metric-value" id="metric-jobs">—</div><div class="metric-bottom"><span class="neutral">Đang hoạt động</span><span class="metric-caption" id="metric-pending">— video chờ</span></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Memory RSS</span><span class="metric-icon orange">▥</span></div><div class="metric-value" id="metric-memory">—</div><div class="meter"><span id="memory-meter"></span></div><div class="metric-bottom"><span class="neutral" id="metric-heap">Heap —</span><span class="metric-caption">Runtime memory</span></div></article>
+        </div>
+        <div class="two-col">
+          <article class="panel health-panel"><div class="panel-heading"><div><p class="eyebrow">HEALTH CHECK</p><h3>Trạng thái thành phần</h3></div><span class="mini-tag">LIVE</span></div><div class="health-list" id="health-list"><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div></article>
+          <article class="panel quick-panel"><div class="panel-heading"><div><p class="eyebrow">QUICK CONTROL</p><h3>Điều khiển nhanh</h3></div></div><button class="quick-action" data-goto="maintenance"><span class="quick-icon amber">⛭</span><span><b>Chuyển chế độ bảo trì</b><small>Bật/tắt truy cập bot cho người dùng</small></span><i>›</i></button><button class="quick-action" data-goto="vietsub"><span class="quick-icon violet">CC</span><span><b>Cấu hình Vietsub</b><small>Chế độ mặc định và giới hạn video</small></span><i>›</i></button><button class="quick-action" data-goto="connectors"><span class="quick-icon cyan">⇄</span><span><b>Kiểm tra Core API</b><small>Kiểm tra kết nối backend độc lập</small></span><i>›</i></button></article>
+        </div>
+        <article class="panel architecture-panel"><div class="panel-heading"><div><p class="eyebrow">MODULAR ARCHITECTURE</p><h3>Các module tách biệt</h3></div><button class="text-button" data-goto="developer">Xem API catalog ↗</button></div><div class="architecture-grid"><div class="arch-node"><span class="arch-symbol">◈</span><b>Admin Dashboard</b><small>UI /admin</small></div><div class="arch-link">⇄<small>HTTP JSON</small></div><div class="arch-node"><span class="arch-symbol cyan">⌘</span><b>API Gateway</b><small>/api/v1/admin/*</small></div><div class="arch-link">⇄<small>Adapters</small></div><div class="arch-node"><span class="arch-symbol violet">⚙</span><b>Service Modules</b><small>Bot · Vietsub · Core</small></div><div class="arch-link">⇄<small>Storage</small></div><div class="arch-node"><span class="arch-symbol amber">▤</span><b>State & Audit</b><small>JSON now / DB-ready</small></div></div></article>
+      </section>
+
+      <section class="content-section" id="section-maintenance">
+        <div class="section-intro"><p class="eyebrow">OPERATIONS CONTROL</p><h2>Bảo trì & vận hành</h2><p class="muted">Tạm dừng trải nghiệm của người dùng mà không dừng API health check hoặc dashboard Admin.</p></div>
+        <article class="panel maintenance-hero"><div class="maintenance-copy"><span class="large-icon">⛭</span><div><p class="eyebrow">GLOBAL MAINTENANCE MODE</p><h3 id="maintenance-heading">Hệ thống đang hoạt động</h3><p id="maintenance-description" class="muted">Người dùng có thể sử dụng bot bình thường.</p></div></div><label class="switch"><input id="maintenance-toggle" type="checkbox"><span class="switch-track"></span></label></article>
+        <div class="two-col"><article class="panel"><div class="panel-heading"><div><p class="eyebrow">USER NOTICE</p><h3>Thông báo bảo trì</h3></div></div><label class="field-label" for="maintenance-message">Nội dung hiển thị cho người dùng</label><textarea id="maintenance-message" rows="5" maxlength="500">Hệ thống đang bảo trì, vui lòng quay lại sau.</textarea><p class="help-text">Tối đa 500 ký tự. Admin vẫn có thể quản trị.</p><button id="save-maintenance" class="btn btn-primary">Lưu cấu hình bảo trì ↗</button></article><article class="panel"><div class="panel-heading"><div><p class="eyebrow">OPERATIONAL SAFETY</p><h3>Kiểm soát an toàn</h3></div></div><div class="setting-row"><div><b>Health endpoint</b><small>Cho phép Render kiểm tra dịch vụ</small></div><span class="state-tag success">Luôn mở</span></div><div class="setting-row"><div><b>Admin bypass</b><small>Quản trị viên không bị khóa bởi bảo trì</small></div><span class="state-tag success">Bật</span></div><div class="setting-row"><div><b>Audit trail</b><small>Ghi lại thay đổi cài đặt quản trị</small></div><span class="state-tag info">Bật</span></div><div class="callout warning">⚠️ Bật bảo trì sẽ chặn update Telegram của người dùng thường, nhưng không dừng tiến trình Render.</div></article></div>
+      </section>
+
+      <section class="content-section" id="section-vietsub">
+        <div class="section-intro"><p class="eyebrow">BOT SETTINGS</p><h2>Bot & Vietsub</h2><p class="muted">Cấu hình mặc định dùng cho người dùng chưa lưu lựa chọn cá nhân.</p></div>
+        <article class="panel form-panel"><div class="panel-heading"><div><p class="eyebrow">SUBTITLE PIPELINE</p><h3>Cấu hình xử lý video</h3></div><span class="mini-tag">LOCAL MODELS</span></div><div class="form-grid"><div><label class="field-label" for="default-subtitle-mode">Chế độ Vietsub mặc định</label><select id="default-subtitle-mode"><option value="ask">Hỏi người dùng mỗi lần</option><option value="original">SRT nguyên ngữ</option><option value="vietnamese">Vietsub tiếng Việt</option><option value="burn-vietnamese">MP4 gắn phụ đề tiếng Việt</option></select><p class="help-text">Tùy chọn cá nhân của người dùng vẫn được ưu tiên nếu đã lưu.</p></div><div><label class="field-label" for="max-video-mb">Giới hạn video nguồn (MB)</label><input id="max-video-mb" type="number" min="1" max="2000" step="1" value="20"><p class="help-text">Giới hạn tải file thực tế còn phụ thuộc Telegram Bot API và tài nguyên Render.</p></div></div><div class="setting-row setting-toggle"><div><b>Bật tính năng phụ đề</b><small>Cho phép người đủ quyền gửi video xử lý</small></div><label class="switch"><input id="subtitle-enabled" type="checkbox" checked><span class="switch-track"></span></label></div><div class="setting-row"><div><b>Tự phát hiện ngôn ngữ</b><small>Whisper.cpp dùng chế độ nhận diện ngôn ngữ tự động</small></div><span class="state-tag success">Mặc định</span></div><div class="form-actions"><span id="settings-status" class="muted"></span><button id="save-settings" class="btn btn-primary">Lưu cấu hình Vietsub ↗</button></div></article>
+        <article class="panel note-panel"><span class="note-icon">ⓘ</span><div><b>Lưu ý vận hành</b><p class="muted">Nhận diện Whisper.cpp và dịch Argos chạy trên máy chủ. Thay đổi cấu hình mặc định không thay thế quyền ở ADMIN_IDS/SUBTITLE_ALLOWED_IDS. Đối với môi trường nhiều instance, nên chuyển JSON state sang PostgreSQL hoặc Redis.</p></div></article>
+      </section>
+
+      <section class="content-section" id="section-connectors">
+        <div class="section-intro"><p class="eyebrow">SERVICE INTEGRATION</p><h2>API & tích hợp</h2><p class="muted">Các module gọi qua API có phiên bản; giao diện không truy cập trực tiếp database hay Telegram token.</p></div>
+        <div id="connector-list" class="connector-grid"><article class="panel"><div class="skeleton-row"></div></article></div>
+        <article class="panel"><div class="panel-heading"><div><p class="eyebrow">API CONTRACT</p><h3>Nguyên tắc kết nối module</h3></div></div><div class="contract-list"><div><span>01</span><div><b>Admin API</b><small>/api/v1/admin/* — session authentication</small></div></div><div><span>02</span><div><b>Public status API</b><small>/api/v1/public/status — không trả secrets</small></div></div><div><span>03</span><div><b>Core Backend Adapter</b><small>CORE_BACKEND_URL — service-to-service</small></div></div><div><span>04</span><div><b>Telegram Webhook</b><small>/webhook — X-Telegram-Bot-Api-Secret-Token</small></div></div></div></article>
+      </section>
+
+      <section class="content-section" id="section-developer">
+        <div class="section-intro"><p class="eyebrow">DEVELOPER TOOLS</p><h2>API Explorer</h2><p class="muted">Danh mục endpoint để frontend, bot và backend tích hợp tách biệt.</p></div>
+        <article class="panel table-panel"><div class="panel-heading"><div><p class="eyebrow">VERSIONED REST API</p><h3>Endpoint catalog</h3></div><button id="copy-api-catalog" class="btn btn-ghost">Copy JSON</button></div><div class="table-scroll"><table><thead><tr><th>Method</th><th>Path</th><th>Area</th><th>Auth</th><th>Mô tả</th></tr></thead><tbody id="api-table"><tr><td colspan="5">Đang tải API catalog…</td></tr></tbody></table></div></article>
+        <article class="panel code-panel"><div class="panel-heading"><div><p class="eyebrow">EXAMPLE CLIENT</p><h3>Gọi API từ module khác</h3></div></div><pre><code>const response = await fetch('/api/v1/admin/overview', {
+  credentials: 'same-origin',
+  headers: { 'Accept': 'application/json' }
+});
+if (!response.ok) throw new Error('Admin API request failed');
+const overview = await response.json();</code></pre><p class="help-text">API Admin yêu cầu cookie phiên HttpOnly. Module ngoài dịch vụ cần cơ chế service token riêng — không dùng cookie Admin chia sẻ.</p></article>
+      </section>
+
+      <section class="content-section" id="section-audit">
+        <div class="section-intro"><p class="eyebrow">CHANGE MANAGEMENT</p><h2>Nhật ký hoạt động</h2><p class="muted">Theo dõi thay đổi cài đặt, bảo trì và thao tác kiểm tra API.</p></div>
+        <article class="panel table-panel"><div class="panel-heading"><div><p class="eyebrow">AUDIT LOG</p><h3>Hoạt động gần đây</h3></div><button id="refresh-audit" class="btn btn-ghost">↻ Làm mới</button></div><div class="table-scroll"><table><thead><tr><th>Thời gian</th><th>Thao tác</th><th>Actor</th><th>Chi tiết</th></tr></thead><tbody id="audit-table"><tr><td colspan="4">Đang tải nhật ký…</td></tr></tbody></table></div></article>
+      </section>
+      <footer class="main-footer"><span>HENDY ADMIN PRO · CONTROL PLANE</span><span id="footer-version">API v1 · Session secured</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/admin.js" defer></script>
+</body>
+</html>
